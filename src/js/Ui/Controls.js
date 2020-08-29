@@ -4,11 +4,15 @@ class Controls {
         this.stopButton = null;
         this.loopButton = null;
         this.analyserButton = null;
+        this.qualityButton = null;
+        this.uploadTrackButton = null;
 
         this._createPlayControl();
         this._createStopControl();
         this._createLoopControl();
         this._createAnalyserControl();
+        this._createQualityControl();
+        this._createUploadTrackControl();
     }
     _createPlayControl() {
         this.playButton = document.createElement("BUTTON");
@@ -40,6 +44,18 @@ class Controls {
         this.analyserButton.innerHTML = `<span><i class="fa fa-chart-bar"></i>Analyser</span>`;
     }
 
+    _createQualityControl(){
+        this.qualityButton = document.createElement("BUTTON");
+        this.qualityButton.className = 'btn-lg btn-default';
+        this.qualityButton.innerHTML = `<span><i class="fa fa-heartbeat"></i></span>`;
+    }
+
+    _createUploadTrackControl(){
+        this.uploadTrackButton = document.createElement("BUTTON");
+        this.uploadTrackButton.className = 'btn-lg btn-default';
+        this.uploadTrackButton.innerHTML = `<input type="file" id="uploadFile"><span><i class="fa fa-upload"></i></span></input>`;
+    }
+
     getPlayElement() {
         return this.playButton;
     }
@@ -52,6 +68,14 @@ class Controls {
         return this.loopButton;
     }
 
+    getQualityElement() {
+        return this.qualityButton;
+    }
+
+    getUploadTrackElement(){
+        return this.uploadTrackButton;
+    }
+
     render() {
         let container = document.createElement('div');
         container.className = 'container text-center pt-4';
@@ -59,7 +83,9 @@ class Controls {
         container.appendChild(this.playButton);
         container.appendChild(this.stopButton);
         container.appendChild(this.loopButton);
-        container.appendChild(this.analyserButton);
+        //container.appendChild(this.analyserButton);
+        container.appendChild(this.qualityButton);
+        container.appendChild(this.uploadTrackButton);
 
         document.body.appendChild(container);
      }

@@ -1,23 +1,26 @@
 class Track {
     constructor(){
-       this.buffer = null; 
+       this.buffer = null;
+       this.audioURL = null;
     }
+
+    setAudioURL(url){
+        this.audioURL = url;
+    }
+
     /**
      * 
      * @param {*} buffer 
      */
     addBuffer(buffer) {
-        if (!this.buffer) {
             this.buffer = buffer;
-        }   
     }
 
     load(player) {
-        if (this.buffer) {
+        if(this.audioURL === null){
             return;
         }
-
-        this.loadFile(player, 'track.wav').then((audioBuffer) => {
+        this.loadFile(player, this.audioURL).then((audioBuffer) => {
            this.addBuffer(audioBuffer);
            requestAnimationFrame(player.draw.bind(player));
         });
@@ -26,15 +29,11 @@ class Track {
     async getFile(player, filepath) {
         const response = await fetch(filepath);
         const arrayBuffer = await response.arrayBuffer();
-        const audioBuffer = await  player.audioContext.decodeAudioData(arrayBuffer);
-
-        return audioBuffer;
+        return await player.audioContext.decodeAudioData(arrayBuffer);
       }
     
     async loadFile(player, filePath) {
-        const track = await this.getFile(player, filePath);
-
-        return track;
+        return await this.getFile(player, filePath);
       }
     render() {
 

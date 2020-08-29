@@ -15,6 +15,8 @@ class Player {
         this.looping = false;
         this.bars = null;
         this.essentia = null;
+        this.essentiaAnalizer = null;
+        this.uploader = null;
     }
     /**
      * Entry point to start everything.
@@ -55,6 +57,8 @@ class Player {
         this.controls.getPlayElement().addEventListener('click', this._handlePlay.bind(this));
         this.controls.getStopElement().addEventListener('click', this._stopTrack.bind(this));
         this.controls.getLoopElement().addEventListener('click', this._handleLoop.bind(this));
+        this.controls.getQualityElement().addEventListener('click', this._handleQuality.bind(this));
+        this.controls.getUploadTrackElement().addEventListener('click', this._handleUploadTrack.bind(this));
 
         /**
          * Waveform Events
@@ -123,13 +127,13 @@ class Player {
         let element = this.controls.getLoopElement();
         let value = element.dataset.looping;
         
-        if (!this.audioContext.source || this.waveformMarker.markers.length != 2) {
+        if (!this.audioContext.source || this.waveformMarker.markers.length !== 2) {
             console.log('missing init and end markers');
 
             return;    
         }
         
-        if (value == 'true') {
+        if (value === 'true') {
             this.audioContext.source.loop = false;
             this.looping = false;
             this.waveformMarker.markers = [];
@@ -155,15 +159,6 @@ class Player {
         this.analyser_.get().connect(this.audioContext.destination);
         this.canvas = this.analyser_.getCanvas();
         this.analyser_.start();
-
-        this.bufferSize = 8192;
-        var scriptNode = this.audioContext.createScriptProcessor(this.bufferSize, 1, 1);
-        this.audioContext.source.connect(scriptNode);
-        scriptNode.connect(this.audioContext.destination);
-        scriptNode.onaudioprocess = (event) => {
-            console.log(event);
-            console.log(this.essentia);
-        };
 
         this.audioContext.source.start(0, parseFloat(this.prevPlayedTime));
         this.audioContext.source.addEventListener('ended', () => {
@@ -224,6 +219,20 @@ class Player {
         // this.essentiaAnalyser.stop();
     }
 
+    _handleQuality(){
+        var qualityResults = this.essentiaAnalizer.qualityAnalysis(this.track.buffer);
+    }
+
+    _handleUploadTrack(){
+        this.uploader = document.getElementById("uploadFile");
+        this.uploader.addEventListener('change', this._handleSetUrlAudio.bind(this));
+    }
+
+    _handleSetUrlAudio(e){
+        this.track.audioURL = URL.createObjectURL(e.target.files[0]);
+        this.loadAudioTrack();
+    }
+
     /**
      * 
      */
@@ -246,30 +255,11 @@ class Player {
             this.analyser_= new Analyser(this.audioContext.createAnalyser());
             this.analyser_.render(document.querySelector('.modal'), 470, 300);
             console.log(this.track.buffer);
-
-            this.loadEssentia();
+            this.essentiaAnalizer = new EssentiaAnalyser(this.audioContext);
         } else {
             alert('Your browser does not support web audio api');
         }
     }
-    
-    /**
-    *
-    */
-    loadEssentia(){
-        EssentiaModule().then( (EssentiaWasmModule)=> {
-            this.essentia = new Essentia(EssentiaWasmModule);
-            this.essentiaAnalyser = new EssentiaAnalyser(this.audioContext, this.track, this.essentia);
-            // this.essentiaAnalyser.init(this.track);
-        });
-    }
-
-    // startEssentiaAnalisis(event, this.essentia){
-    //     console.log(event);
-    //     console.log(this);
-    //     // let essRMS = this.essentia.RMS(this.essentiaAnalyser.typedFloat32Array2Vec(this.track.buffer.getChannelData(0)));
-    //     // console.log(essRMS);
-    // }
 
     /**
      * 
