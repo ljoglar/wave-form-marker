@@ -26,7 +26,7 @@ class WaveformMarker {
         let canvasHeight = this.options.canvasHeight;
         let drawLines = this.options.drawLines;
         let leftChannel = trackBuffer.getChannelData(0);  
-        let canvasContext = this.canvas.getCanvasContext(); 
+        let canvasContext = this.canvas.getCanvasContext('2d');
 
         this.wrapperElement
             .replaceWith(
@@ -42,7 +42,6 @@ class WaveformMarker {
         canvasContext.strokeStyle = '#46a0ba';
         canvasContext.globalCompositeOperation = 'lighter';
         canvasContext.translate(0, canvasHeight / 2);
-        canvasContext.globalAlpha = 0.9;
         canvasContext.lineWidth=1;
         let totallength = leftChannel.length;
         let eachBlock = Math.floor(totallength / drawLines);

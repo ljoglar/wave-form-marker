@@ -17,6 +17,7 @@ class Player {
         this.essentia = null;
         this.essentiaAnalizer = null;
         this.uploader = null;
+        this.qualityResults = null;
     }
     /**
      * Entry point to start everything.
@@ -220,7 +221,7 @@ class Player {
     }
 
     _handleQuality(){
-        var qualityResults = this.essentiaAnalizer.qualityAnalysis(this.track.buffer);
+        this.qualityResults = this.essentiaAnalizer.qualityAnalysis(this.track.buffer);
     }
 
     _handleUploadTrack(){
@@ -268,12 +269,46 @@ class Player {
         this.track.load(this);
     }
 
+
+    drawQualityResults(){
+        if(this.qualityResults !== null){
+            if(this.qualityResults.saturationResults.starts.size() > 0 ){
+                this.drawProblemLines(this.qualityResults.saturationResults.starts, 'rgba(255,0,0,.6)');
+            }
+            if(this.qualityResults.startStopCutResults.startCut === 1){
+                for (const x of Array(5).keys()) {
+                    this.drawLine(x, 'blue');
+                }
+            }
+            if(this.qualityResults.startStopCutResults.stopCut === 1){
+                for(const x of Array(5).keys()) {
+                    this.drawLine(this.options.waveform.canvasWidth - x, 'blue');
+                }
+            }
+        }
+    }
+
+    drawProblemLines(arrayTimes, color){
+        const lengthTrack = this.track.buffer.getChannelData(0).length;
+        let eachBlock = Math.floor(lengthTrack / this.options.waveform.drawLines);
+        //console.log(eachBlock);
+        let lastSampleLine = 0;
+        for (let i = 0; i < arrayTimes.size(); i ++){
+            if( arrayTimes.get(i) * 44100 - lastSampleLine >= eachBlock){
+                lastSampleLine = arrayTimes.get(i) * 44100;
+                let samplePixel = arrayTimes.get(i) * 44100 * this.options.waveform.canvasWidth / lengthTrack;
+                this.drawLine(samplePixel, color);
+            }
+        }
+    }
+
+
     /**
      * Print line marker given a Marker Object
      * @param {*} tempMarker 
      */
     printMarker(tempMarker) {
-        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext();
+        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext('2d');
         let textMeasurements = canvasContext.measureText(tempMarker.text);
         canvasContext.fillStyle = "#666";
         canvasContext.globalAlpha = 0.7;
@@ -314,7 +349,7 @@ class Player {
     drawArea(initTime, endTime, color){
                 
         // TODO: Covert time to pixels (timeToPixelConverter())
-        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext(); 
+        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext('2d');
         canvasContext.beginPath();
         canvasContext.rect(initTime, 0, (endTime - initTime), this.options.waveform.canvasHeight);
         canvasContext.fillStyle = color;
@@ -327,7 +362,7 @@ class Player {
      * @param {*} color 
      */
     drawLine(currentTime, color){
-        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext();
+        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext('2d');
         canvasContext.beginPath();
         canvasContext.moveTo(currentTime, 0);
         canvasContext.lineTo(currentTime, this.options.waveform.canvasHeight);
@@ -359,9 +394,13 @@ class Player {
      * Print areas, markers if both exists and time cursor
      */
     draw(){
-        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext()
+        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext('2d');
         canvasContext.clearRect(0, 0, this.options.waveform.canvasWidth, this.options.waveform.canvasHeight);
+        //Draw waveform
         this.waveformMarker.render(this.track.buffer);
+
+        //Draw Audio Problems
+        this.drawQualityResults();
 
         // Paint Areas
         this.drawAreas();

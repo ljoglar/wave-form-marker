@@ -5,6 +5,9 @@ class EssentiaAnalyser {
         this.essentia = null;
         this.essentiaCustom = null;
         this.essentiaSaturationExtractor = null;
+		this.startStopSilenceExtractor = null
+        this.frameSize = 512;
+        this.hopSize = 256;
         // this.bufferSize = 8192;
         // this.scriptNode = audioContext.createScriptProcessor(this.bufferSize, 1, 1);
 
@@ -20,42 +23,54 @@ class EssentiaAnalyser {
 			this.essentia = new Essentia(EssentiaWasmModule);
     	});
 
-		EssentiaWASM().then( (EssentiaWasmModule)=> {
-			this.essentiaSaturationExtractor = new EssentiaWasmModule.SaturationDetectorExtractor(512, 256);
+		EssentiaWASMSaturation().then( (EssentiaWasmModule)=> {
+			this.essentiaSaturationExtractor = new EssentiaWasmModule.SaturationDetectorExtractor(this.frameSize, this.hopSize);
 		});
+
+		EssentiaWASMStartStopSilence().then( (EssentiaWasmModule) =>{
+			this.startStopSilenceExtractor = new EssentiaWasmModule.StartStopSilenceExtractor(this.frameSize, this.hopSize);
+		});
+
+
 
 	}
 
 	qualityAnalysis(trackBuffer) {
 		const FRAME_SIZE = 512;
 		const HOP_SIZE = 256;
-		// let startStopSilenceResults = [];
-		// let humResults = [];
-		let clickDetectorResults = [];
-		// let falseStereoResults = [];
-		let startStopCutResults;
-		// let truePeakDetectorResults;
-		let discontinuityResults = [];
-		// let gapsDetectorResults = [];
-		let saturationDetectorResults = [];
-		// let noiseBurstDetectorResults = [];
+		let saturationResults = {'starts': null, 'ends': null};
+		let startStopCutResults = { 'startCut': 0, 'stopCut': 0 };
 		let snrResults = [];
+		let startStopSilenceResults = [];
+		// let humResults = [];
+		// let falseStereoResults = [];
+		// let truePeakDetectorResults;
+		// let discontinuityResults = [];
+		// let clickDetectorResults = [];
+		// let gapsDetectorResults = [];
+		// let noiseBurstDetectorResults = [];
+
 
 		let trackBufferData = this.essentia.arrayToVector(trackBuffer.getChannelData(0));
 
-		//StartStopCut
-		// startStopCutResults = this.essentia.StartStopCut(trackBufferData);
+		//StartStopSilence
+		//startStopSilenceResults = this.startStopSilenceExtractor.compute(trackBuffer.getChannelData(0));
 
-		const frames = this.essentia.FrameGenerator(trackBuffer.getChannelData(0), FRAME_SIZE, HOP_SIZE);
-		for (let i = 0; i < frames.size(); i++) {
-			let frame_windowed = this.essentia.Windowing(frames.get(i), true, FRAME_SIZE);
+		//Saturation
+		saturationResults['starts'] = this.essentiaSaturationExtractor.computeStarts(trackBuffer.getChannelData(0));
+		saturationResults['ends'] = this.essentiaSaturationExtractor.computeEnds(trackBuffer.getChannelData(0));
+
+		//StartStopCut
+		startStopCutResults = this.essentia.StartStopCut(trackBufferData);
+
+
+
+		//const frames = this.essentia.FrameGenerator(trackBuffer.getChannelData(0), FRAME_SIZE, HOP_SIZE);
+		//for (let i = 0; i < frames.size(); i++) {
+		//	let frame_windowed = this.essentia.Windowing(frames.get(i), true, FRAME_SIZE);
 			// SNR
-			snrResults.push(this.essentia.SNR(frame_windowed['frame']));
-			//Saturation
-			// let satRes = this.essentia.SaturationDetector(frames.get(i), 0.001, -1, FRAME_SIZE, HOP_SIZE);
-			// if (satRes["starts"].size() !== 0){
-			// 	saturationDetectorResults.push(satRes);
-			// }
+		//	snrResults.push(this.essentia.SNR(frame_windowed['frame']));
+
 			//Clicks
 			// let clickRes = this.essentia.ClickDetector(frames.get(i));
 			// if (clickRes["starts"].size() !== 0){
@@ -67,12 +82,20 @@ class EssentiaAnalyser {
 			// 	discRes["frame"]=i;
 			// 	discontinuityResults.push(discRes);
 			// }
-		}
+		//}
 
 
-		console.log("snrResults: " + snrResults[0]);
+		console.log("startStopCutResults");
+		console.log(startStopCutResults);
+		console.log("saturationResults");
+		console.log(saturationResults);
+
+
+
+
+
 		// console.log("snrResults: " + snrResults[0].instantSNR.get(0));
-		console.log("snrResults: " + this.essentia.vectorToArray(snrResults[0]));
+		// console.log("snrResults: " + this.essentia.vectorToArray(snrResults[0]));
 		// for(let i = 0; i < clickDetectorResults.length; i++){
 		// 	console.log("clickDetector: " + clickDetectorResults[i]["starts"].get(0));
 		// }
@@ -88,11 +111,10 @@ class EssentiaAnalyser {
 
 
 		return {
-			"startStopCut": startStopCutResults,
-			"clickDetectorResults": clickDetectorResults,
-			"discontinuityResults": discontinuityResults,
-			"saturationDetectorResults": saturationDetectorResults,
-			"snrResults": snrResults
+		 	"startStopSilenceResults": startStopSilenceResults,
+		// 	"clickDetectorResults": clickDetectorResults,
+		 	"startStopCutResults": startStopCutResults,
+			"saturationResults": saturationResults
 		}
 	}
 }

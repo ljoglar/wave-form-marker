@@ -4686,6 +4686,9 @@ class EssentiaAnalyser {
         this.essentia = null;
         this.essentiaCustom = null;
         this.essentiaSaturationExtractor = null;
+		this.startStopSilenceExtractor = null
+        this.frameSize = 512;
+        this.hopSize = 256;
         // this.bufferSize = 8192;
         // this.scriptNode = audioContext.createScriptProcessor(this.bufferSize, 1, 1);
 
@@ -4701,42 +4704,54 @@ class EssentiaAnalyser {
 			this.essentia = new Essentia(EssentiaWasmModule);
     	});
 
-		EssentiaWASM().then( (EssentiaWasmModule)=> {
-			this.essentiaSaturationExtractor = new EssentiaWasmModule.SaturationDetectorExtractor(512, 256);
+		EssentiaWASMSaturation().then( (EssentiaWasmModule)=> {
+			this.essentiaSaturationExtractor = new EssentiaWasmModule.SaturationDetectorExtractor(this.frameSize, this.hopSize);
 		});
+
+		EssentiaWASMStartStopSilence().then( (EssentiaWasmModule) =>{
+			this.startStopSilenceExtractor = new EssentiaWasmModule.StartStopSilenceExtractor(this.frameSize, this.hopSize);
+		});
+
+
 
 	}
 
 	qualityAnalysis(trackBuffer) {
 		const FRAME_SIZE = 512;
 		const HOP_SIZE = 256;
-		// let startStopSilenceResults = [];
-		// let humResults = [];
-		let clickDetectorResults = [];
-		// let falseStereoResults = [];
-		let startStopCutResults;
-		// let truePeakDetectorResults;
-		let discontinuityResults = [];
-		// let gapsDetectorResults = [];
-		let saturationDetectorResults = [];
-		// let noiseBurstDetectorResults = [];
+		let saturationResults = {'starts': null, 'ends': null};
+		let startStopCutResults = { 'startCut': 0, 'stopCut': 0 };
 		let snrResults = [];
+		let startStopSilenceResults = [];
+		// let humResults = [];
+		// let falseStereoResults = [];
+		// let truePeakDetectorResults;
+		// let discontinuityResults = [];
+		// let clickDetectorResults = [];
+		// let gapsDetectorResults = [];
+		// let noiseBurstDetectorResults = [];
+
 
 		let trackBufferData = this.essentia.arrayToVector(trackBuffer.getChannelData(0));
 
-		//StartStopCut
-		// startStopCutResults = this.essentia.StartStopCut(trackBufferData);
+		//StartStopSilence
+		//startStopSilenceResults = this.startStopSilenceExtractor.compute(trackBuffer.getChannelData(0));
 
-		const frames = this.essentia.FrameGenerator(trackBuffer.getChannelData(0), FRAME_SIZE, HOP_SIZE);
-		for (let i = 0; i < frames.size(); i++) {
-			let frame_windowed = this.essentia.Windowing(frames.get(i), true, FRAME_SIZE);
+		//Saturation
+		saturationResults['starts'] = this.essentiaSaturationExtractor.computeStarts(trackBuffer.getChannelData(0));
+		saturationResults['ends'] = this.essentiaSaturationExtractor.computeEnds(trackBuffer.getChannelData(0));
+
+		//StartStopCut
+		startStopCutResults = this.essentia.StartStopCut(trackBufferData);
+
+
+
+		//const frames = this.essentia.FrameGenerator(trackBuffer.getChannelData(0), FRAME_SIZE, HOP_SIZE);
+		//for (let i = 0; i < frames.size(); i++) {
+		//	let frame_windowed = this.essentia.Windowing(frames.get(i), true, FRAME_SIZE);
 			// SNR
-			snrResults.push(this.essentia.SNR(frame_windowed['frame']));
-			//Saturation
-			// let satRes = this.essentia.SaturationDetector(frames.get(i), 0.001, -1, FRAME_SIZE, HOP_SIZE);
-			// if (satRes["starts"].size() !== 0){
-			// 	saturationDetectorResults.push(satRes);
-			// }
+		//	snrResults.push(this.essentia.SNR(frame_windowed['frame']));
+
 			//Clicks
 			// let clickRes = this.essentia.ClickDetector(frames.get(i));
 			// if (clickRes["starts"].size() !== 0){
@@ -4748,12 +4763,20 @@ class EssentiaAnalyser {
 			// 	discRes["frame"]=i;
 			// 	discontinuityResults.push(discRes);
 			// }
-		}
+		//}
 
 
-		console.log("snrResults: " + snrResults[0]);
+		console.log("startStopCutResults");
+		console.log(startStopCutResults);
+		console.log("saturationResults");
+		console.log(saturationResults);
+
+
+
+
+
 		// console.log("snrResults: " + snrResults[0].instantSNR.get(0));
-		console.log("snrResults: " + this.essentia.vectorToArray(snrResults[0]));
+		// console.log("snrResults: " + this.essentia.vectorToArray(snrResults[0]));
 		// for(let i = 0; i < clickDetectorResults.length; i++){
 		// 	console.log("clickDetector: " + clickDetectorResults[i]["starts"].get(0));
 		// }
@@ -4769,11 +4792,10 @@ class EssentiaAnalyser {
 
 
 		return {
-			"startStopCut": startStopCutResults,
-			"clickDetectorResults": clickDetectorResults,
-			"discontinuityResults": discontinuityResults,
-			"saturationDetectorResults": saturationDetectorResults,
-			"snrResults": snrResults
+		 	"startStopSilenceResults": startStopSilenceResults,
+		// 	"clickDetectorResults": clickDetectorResults,
+		 	"startStopCutResults": startStopCutResults,
+			"saturationResults": saturationResults
 		}
 	}
 }
@@ -4919,7 +4941,7 @@ class WaveformMarker {
         let canvasHeight = this.options.canvasHeight;
         let drawLines = this.options.drawLines;
         let leftChannel = trackBuffer.getChannelData(0);  
-        let canvasContext = this.canvas.getCanvasContext(); 
+        let canvasContext = this.canvas.getCanvasContext('2d');
 
         this.wrapperElement
             .replaceWith(
@@ -4935,7 +4957,6 @@ class WaveformMarker {
         canvasContext.strokeStyle = '#46a0ba';
         canvasContext.globalCompositeOperation = 'lighter';
         canvasContext.translate(0, canvasHeight / 2);
-        canvasContext.globalAlpha = 0.9;
         canvasContext.lineWidth=1;
         let totallength = leftChannel.length;
         let eachBlock = Math.floor(totallength / drawLines);
@@ -4976,6 +4997,7 @@ class Player {
         this.essentia = null;
         this.essentiaAnalizer = null;
         this.uploader = null;
+        this.qualityResults = null;
     }
     /**
      * Entry point to start everything.
@@ -5179,7 +5201,7 @@ class Player {
     }
 
     _handleQuality(){
-        var qualityResults = this.essentiaAnalizer.qualityAnalysis(this.track.buffer);
+        this.qualityResults = this.essentiaAnalizer.qualityAnalysis(this.track.buffer);
     }
 
     _handleUploadTrack(){
@@ -5227,12 +5249,46 @@ class Player {
         this.track.load(this);
     }
 
+
+    drawQualityResults(){
+        if(this.qualityResults !== null){
+            if(this.qualityResults.saturationResults.starts.size() > 0 ){
+                this.drawProblemLines(this.qualityResults.saturationResults.starts, 'rgba(255,0,0,.6)');
+            }
+            if(this.qualityResults.startStopCutResults.startCut === 1){
+                for (const x of Array(5).keys()) {
+                    this.drawLine(x, 'blue');
+                }
+            }
+            if(this.qualityResults.startStopCutResults.stopCut === 1){
+                for(const x of Array(5).keys()) {
+                    this.drawLine(this.options.waveform.canvasWidth - x, 'blue');
+                }
+            }
+        }
+    }
+
+    drawProblemLines(arrayTimes, color){
+        const lengthTrack = this.track.buffer.getChannelData(0).length;
+        let eachBlock = Math.floor(lengthTrack / this.options.waveform.drawLines);
+        //console.log(eachBlock);
+        let lastSampleLine = 0;
+        for (let i = 0; i < arrayTimes.size(); i ++){
+            if( arrayTimes.get(i) * 44100 - lastSampleLine >= eachBlock){
+                lastSampleLine = arrayTimes.get(i) * 44100;
+                let samplePixel = arrayTimes.get(i) * 44100 * this.options.waveform.canvasWidth / lengthTrack;
+                this.drawLine(samplePixel, color);
+            }
+        }
+    }
+
+
     /**
      * Print line marker given a Marker Object
      * @param {*} tempMarker 
      */
     printMarker(tempMarker) {
-        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext();
+        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext('2d');
         let textMeasurements = canvasContext.measureText(tempMarker.text);
         canvasContext.fillStyle = "#666";
         canvasContext.globalAlpha = 0.7;
@@ -5273,7 +5329,7 @@ class Player {
     drawArea(initTime, endTime, color){
                 
         // TODO: Covert time to pixels (timeToPixelConverter())
-        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext(); 
+        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext('2d');
         canvasContext.beginPath();
         canvasContext.rect(initTime, 0, (endTime - initTime), this.options.waveform.canvasHeight);
         canvasContext.fillStyle = color;
@@ -5286,7 +5342,7 @@ class Player {
      * @param {*} color 
      */
     drawLine(currentTime, color){
-        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext();
+        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext('2d');
         canvasContext.beginPath();
         canvasContext.moveTo(currentTime, 0);
         canvasContext.lineTo(currentTime, this.options.waveform.canvasHeight);
@@ -5318,9 +5374,13 @@ class Player {
      * Print areas, markers if both exists and time cursor
      */
     draw(){
-        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext()
+        let canvasContext = this.waveformMarker.getCanvas().getCanvasContext('2d');
         canvasContext.clearRect(0, 0, this.options.waveform.canvasWidth, this.options.waveform.canvasHeight);
+        //Draw waveform
         this.waveformMarker.render(this.track.buffer);
+
+        //Draw Audio Problems
+        this.drawQualityResults();
 
         // Paint Areas
         this.drawAreas();
