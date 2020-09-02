@@ -87,7 +87,7 @@ class Controls {
         container.appendChild(this.qualityButton);
         container.appendChild(this.uploadTrackButton);
 
-        document.body.appendChild(container);
+        document.getElementById("playerContainer").appendChild(container);
      }
 
 

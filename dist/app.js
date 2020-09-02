@@ -4567,7 +4567,7 @@ class Controls {
         container.appendChild(this.qualityButton);
         container.appendChild(this.uploadTrackButton);
 
-        document.body.appendChild(container);
+        document.getElementById("playerContainer").appendChild(container);
      }
 
 
@@ -4722,7 +4722,7 @@ class EssentiaAnalyser {
 		let saturationResults = {'starts': null, 'ends': null};
 		let startStopCutResults = { 'startCut': 0, 'stopCut': 0 };
 		let snrResults = [];
-		let startStopSilenceResults = [];
+		let startStopSilenceResults = 0;
 		// let humResults = [];
 		// let falseStereoResults = [];
 		// let truePeakDetectorResults;
@@ -4735,7 +4735,9 @@ class EssentiaAnalyser {
 		let trackBufferData = this.essentia.arrayToVector(trackBuffer.getChannelData(0));
 
 		//StartStopSilence
-		//startStopSilenceResults = this.startStopSilenceExtractor.compute(trackBuffer.getChannelData(0));
+		startStopSilenceResults = this.startStopSilenceExtractor.compute(trackBuffer.getChannelData(0));
+		//startStopSilenceResults['startFrame'] = this.startStopSilenceExtractor.computeStartframe(trackBuffer.getChannelData(0));
+		//startStopSilenceResults['stopFrame'] = this.startStopSilenceExtractor.computeStopframe(trackBuffer.getChannelData(0));
 
 		//Saturation
 		saturationResults['starts'] = this.essentiaSaturationExtractor.computeStarts(trackBuffer.getChannelData(0));
@@ -4770,6 +4772,8 @@ class EssentiaAnalyser {
 		console.log(startStopCutResults);
 		console.log("saturationResults");
 		console.log(saturationResults);
+		console.log("startStopSilenceResults");
+		console.log(startStopSilenceResults);
 
 
 
@@ -5263,6 +5267,14 @@ class Player {
             if(this.qualityResults.startStopCutResults.stopCut === 1){
                 for(const x of Array(5).keys()) {
                     this.drawLine(this.options.waveform.canvasWidth - x, 'blue');
+                }
+            }
+            if(this.qualityResults.startStopSilenceResults > 0){
+                const lengthTrackSeconds = this.track.buffer.getChannelData(0).length / 44100;
+                const silenceSeconds = this.qualityResults.startStopSilenceResults * 256 / 44100;
+                if (lengthTrackSeconds - silenceSeconds > 10){
+                    const from = silenceSeconds * this.options.waveform.canvasWidth / lengthTrackSeconds;
+                    this.drawArea(from, this.options.waveform.canvasWidth, "rgb(255,255,0,.8)");
                 }
             }
         }

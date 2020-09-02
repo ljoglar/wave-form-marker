@@ -285,6 +285,14 @@ class Player {
                     this.drawLine(this.options.waveform.canvasWidth - x, 'blue');
                 }
             }
+            if(this.qualityResults.startStopSilenceResults > 0){
+                const lengthTrackSeconds = this.track.buffer.getChannelData(0).length / 44100;
+                const silenceSeconds = this.qualityResults.startStopSilenceResults * 256 / 44100;
+                if (lengthTrackSeconds - silenceSeconds > 10){
+                    const from = silenceSeconds * this.options.waveform.canvasWidth / lengthTrackSeconds;
+                    this.drawArea(from, this.options.waveform.canvasWidth, "rgb(255,255,0,.8)");
+                }
+            }
         }
     }
 

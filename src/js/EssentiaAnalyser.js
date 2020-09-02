@@ -41,7 +41,7 @@ class EssentiaAnalyser {
 		let saturationResults = {'starts': null, 'ends': null};
 		let startStopCutResults = { 'startCut': 0, 'stopCut': 0 };
 		let snrResults = [];
-		let startStopSilenceResults = [];
+		let startStopSilenceResults = 0;
 		// let humResults = [];
 		// let falseStereoResults = [];
 		// let truePeakDetectorResults;
@@ -54,7 +54,9 @@ class EssentiaAnalyser {
 		let trackBufferData = this.essentia.arrayToVector(trackBuffer.getChannelData(0));
 
 		//StartStopSilence
-		//startStopSilenceResults = this.startStopSilenceExtractor.compute(trackBuffer.getChannelData(0));
+		startStopSilenceResults = this.startStopSilenceExtractor.compute(trackBuffer.getChannelData(0));
+		//startStopSilenceResults['startFrame'] = this.startStopSilenceExtractor.computeStartframe(trackBuffer.getChannelData(0));
+		//startStopSilenceResults['stopFrame'] = this.startStopSilenceExtractor.computeStopframe(trackBuffer.getChannelData(0));
 
 		//Saturation
 		saturationResults['starts'] = this.essentiaSaturationExtractor.computeStarts(trackBuffer.getChannelData(0));
@@ -89,6 +91,8 @@ class EssentiaAnalyser {
 		console.log(startStopCutResults);
 		console.log("saturationResults");
 		console.log(saturationResults);
+		console.log("startStopSilenceResults");
+		console.log(startStopSilenceResults);
 
 
 

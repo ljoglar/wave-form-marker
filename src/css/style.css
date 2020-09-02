@@ -19,3 +19,30 @@
     margin-top: 100px;
 }
 
+#legend{
+    width: 270px;
+    margin: 100px auto;
+}
+
+.legendAlgo{
+    height: 40px;
+    line-height: 40px;
+    text-align: center;
+}
+
+.legendAlgo span{
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.legendAlgo#saturation{
+    background-color: red;
+}
+
+.legendAlgo#startStopCut{
+    background-color: blue;
+}
+
+.legendAlgo#startStopSilence{
+    background-color: yellow;
+}
